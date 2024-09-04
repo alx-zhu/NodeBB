@@ -245,12 +245,8 @@ module.exports = function (Topics) {
 		await db.deleteAll(deleteKeys);
 	};
 
-	async function handleTagRemoval(tag) {
+	async function handleTagRemoval(tag, tids) {
 		console.log('Alexander Zhu');
-		const tids = await db.getSortedSetRange(`tag:${tag}:topics`, 0, -1);
-		if (!tids.length) {
-			return;
-		}
 		let topicsTags = await Topics.getTopicsTags(tids);
 		topicsTags = topicsTags.map(
 			topicTags => topicTags.filter(topicTag => topicTag && topicTag !== tag)
@@ -264,7 +260,13 @@ module.exports = function (Topics) {
 	}
 
 	async function removeTagsFromTopics(tags) {
-		await async.eachLimit(tags, 50, handleTagRemoval);
+		await async.eachLimit(tags, 50, async (tag) => {
+			const tids = await db.getSortedSetRange(`tag:${tag}:topics`, 0, -1);
+			if (!tids.length) {
+				return;
+			}
+			handleTagRemoval(tag, tids);
+		});
 	}
 
 	async function removeTagsFromUsers(tags) {
