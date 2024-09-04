@@ -245,23 +245,26 @@ module.exports = function (Topics) {
 		await db.deleteAll(deleteKeys);
 	};
 
-	async function removeTagsFromTopics(tags) {
-		await async.eachLimit(tags, 50, async (tag) => {
-			const tids = await db.getSortedSetRange(`tag:${tag}:topics`, 0, -1);
-			if (!tids.length) {
-				return;
-			}
-			let topicsTags = await Topics.getTopicsTags(tids);
-			topicsTags = topicsTags.map(
-				topicTags => topicTags.filter(topicTag => topicTag && topicTag !== tag)
-			);
+	async function handleTagRemoval(tag) {
+		console.log('Alexander Zhu');
+		const tids = await db.getSortedSetRange(`tag:${tag}:topics`, 0, -1);
+		if (!tids.length) {
+			return;
+		}
+		let topicsTags = await Topics.getTopicsTags(tids);
+		topicsTags = topicsTags.map(
+			topicTags => topicTags.filter(topicTag => topicTag && topicTag !== tag)
+		);
 
-			await db.setObjectBulk(
-				tids.map((tid, index) => ([
-					`topic:${tid}`, { tags: topicsTags[index].join(',') },
-				]))
-			);
-		});
+		await db.setObjectBulk(
+			tids.map((tid, index) => ([
+				`topic:${tid}`, { tags: topicsTags[index].join(',') },
+			]))
+		);
+	}
+
+	async function removeTagsFromTopics(tags) {
+		await async.eachLimit(tags, 50, handleTagRemoval);
 	}
 
 	async function removeTagsFromUsers(tags) {
